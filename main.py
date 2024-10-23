@@ -14,41 +14,49 @@ if sys.platform.startswith('win'):
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 from rufus.instruction_parser import InstructionParser
 from rufus.web_crawler import WebCrawler
-from rufus.relevance_checker import RelevanceChecker
+from rufus.relevance_checker import RelevanceChecker, LLMRelevanceChecker
 from rufus.output_aggregator import OutputAggregator
 from bs4 import BeautifulSoup
 
 async def main():
     # User inputs
-    start_url = 'https://sfgov.org'
-    instructions = "We're making a chatbot for the HR in San Francisco."
+    start_url = 'https://www.sf.gov/'
+    instructions = "We're making a chatbot for jobs in San Francisco."
 
     # Step 1: Parse Instructions
     parser = InstructionParser()
     extracted_info = parser.parse_instructions(instructions)
-    print('Extracted Information:', extracted_info)
+    print('Extracted Topics and Keywords:', extracted_info)
 
-    # Step 2: Crawl the Web
-    crawler = WebCrawler(start_url, max_pages=100)
+    # Step 2: Crawl the Web with Focused Crawling
+    crawler = WebCrawler(start_url, extracted_topics=extracted_info, max_pages=100)
     await crawler.crawl()
 
-    # Step 3: Check Relevance
-    checker = RelevanceChecker(instructions)
+    # Step 3: Check Relevance with Embeddings and LLM
+    embedding_checker = RelevanceChecker(extracted_topics=extracted_info)
+    llm_checker = LLMRelevanceChecker(instructions)
     aggregator = OutputAggregator()
 
     for page in crawler.content:
         url = page['url']
         html = page['html']
         text = extract_text(html)
-        if checker.is_relevant(text):
-            aggregator.add_content(url, text)
+        summarized_text = summarize_content(text)
+        if embedding_checker.is_relevant(summarized_text):
+            if llm_checker.is_relevant(summarized_text):
+                aggregator.add_content(url, text)
+            else:
+                logger.info(f'LLM determined irrelevance for {url}')
+        else:
+            logger.info(f'Embedding similarity too low for {url}')
 
     # Step 4: Output Results
     aggregator.save_to_files(directory='output')
-    print(f'Relevant pages saved to "output" directory.')
+    print(f'Relevant pages saved to \"output\" directory.')
 
 def extract_text(html_content):
     soup = BeautifulSoup(html_content, 'html.parser')
@@ -60,6 +68,11 @@ def extract_text(html_content):
     import re
     text = re.sub(r'\s+', ' ', text)
     return text.strip()
+
+def summarize_content(content):
+    # For now, we will limit the content to the first 2000 characters
+    # Optionally, implement a better summarization method
+    return content[:2000]
 
 if __name__ == '__main__':
     asyncio.run(main())
