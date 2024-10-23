@@ -1,5 +1,3 @@
-# rufus/output_aggregator.py
-
 import json
 import os
 

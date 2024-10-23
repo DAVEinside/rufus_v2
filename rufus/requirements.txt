@@ -3,3 +3,6 @@ beautifulsoup4==4.10.0
 tqdm==4.64.0
 openai==0.27.8
 langchain==0.0.235
+python-dotenv==1.0.0
+readability-lxml==0.8.1
+numpy==1.21.0

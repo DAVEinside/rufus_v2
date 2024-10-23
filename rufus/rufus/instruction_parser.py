@@ -1,8 +1,5 @@
-# rufus/instruction_parser.py
-
 from langchain.llms import OpenAI
 from langchain.prompts import PromptTemplate
-import os
 
 class InstructionParser:
     def __init__(self):
@@ -23,7 +20,7 @@ Extracted Information:
     def parse_instructions(self, instructions):
         prompt = self.prompt_template.format(instructions=instructions)
         response = self.llm(prompt)
-        # Simple parsing assuming the response is a list
+        # Simple parsing assuming the response is a list starting with '- '
         extracted_info = response.strip().split('\n- ')
         extracted_info = [info.strip('- ') for info in extracted_info if info.strip()]
         return extracted_info

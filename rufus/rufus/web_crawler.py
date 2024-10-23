@@ -1,16 +1,17 @@
-# rufus/web_crawler.py
-
 import asyncio
 import aiohttp
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 import logging
 
+from .utils import extract_text
+
 logger = logging.getLogger(__name__)
 
 class WebCrawler:
-    def __init__(self, start_url, max_pages=100):
+    def __init__(self, start_url, relevance_checker, max_pages=100):
         self.start_url = start_url
+        self.relevance_checker = relevance_checker
         self.max_pages = max_pages
         self.visited_urls = set()
         self.content = []
@@ -31,8 +32,13 @@ class WebCrawler:
                 async with session.get(url, timeout=10) as response:
                     if response.status == 200:
                         html = await response.text()
-                        self.content.append({'url': url, 'html': html})
-                        await self._extract_links(html, url)
+                        text = extract_text(html)
+                        if self.relevance_checker.is_relevant(text):
+                            self.content.append({'url': url, 'html': html})
+                            # Only extract links if the page is relevant
+                            await self._extract_links(html, url)
+                        else:
+                            logger.info(f'Page not relevant: {url}')
                     else:
                         logger.warning(f'Failed to retrieve {url}: Status {response.status}')
         except Exception as e:
@@ -48,9 +54,11 @@ class WebCrawler:
                 continue
             full_url = urljoin(base_url, href)
             parsed_url = urlparse(full_url)
-            # Skip non-http URLs
+            # Skip non-http URLs and external domains
             if parsed_url.scheme not in ['http', 'https']:
                 continue
+            if urlparse(self.start_url).netloc != parsed_url.netloc:
+                continue  # Skip external links
             tasks.append(self._crawl_page(full_url))
         if tasks:
             await asyncio.gather(*tasks)
