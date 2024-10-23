@@ -16,7 +16,7 @@ setup(
     description='Rufus: Intelligent Web Crawler for RAG Pipelines',
     author='nimit dave',
     author_email='nimitdave3001@gmail.com.com',
-    url='https://github.com/DAVEinside/rufus_v2',  # Update with your repository URL
+    url='https://github.com/DAVEinside/rufus_v2',
     classifiers=[
         'Programming Language :: Python :: 3',
         'Operating System :: OS Independent',
